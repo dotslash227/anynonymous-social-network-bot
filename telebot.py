@@ -49,14 +49,15 @@ def replyToUser(data, uid):
             message = "We have got your email address, and we will be adding you your company's anonymous channel. You will receive a confirmation shortly %s" % step
 
         try:
-            already_replied.push(data["update_id"])
+            already_replied.append(data["update_id"])
             data = {
                 "chat_id": data["message"]["chat"]["id"],
                 "text": message 
             }
             send_message = requests.post(url, data)
-        except:
+        except Exception as e:
             print ("Could not send message")
+            print (str(e))
         else:
             users[uid] += 1
             print ("replies sent")
