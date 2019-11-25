@@ -1,31 +1,35 @@
 import requests
-import json
+import psycopg2
 
 base_url = "https://api.telegram.org/bot808378125:AAEJxb5qJdSugysaGzxxHRsEQLDho-lcbcs/"
 users = {}
 already_replied = []
 approved_emails = ["infosys.com", "tcs.com", "mauna.ai"]
 
-def main():
-    print (already_replied, users)
+def main(conn):    
+    cur = conn.cursor()    
     try:
         updates = requests.get("https://api.telegram.org/bot808378125:AAEJxb5qJdSugysaGzxxHRsEQLDho-lcbcs/getUpdates")
     except:
         print ("could not connect to telegram")
     else:
-        updates = updates.json()
-        print (updates)
+        updates = updates.json()        
         for each in updates["result"]:
             uid = each["message"]["from"]["id"]
-            if uid in users.keys():
-                replyToUser(each, uid)
-            else:
-                users[uid] = 0        
-                replyToUser(each, uid)
+            username = each["message"]["from"]["username"]                        
+            cur.execute("SELECT id, username, step FROM users WHERE id=%s;" % uid)
+            user = cur.fetchone()    
+            if user is None:
+                cur.execute("INSERT INTO users(id, username, step) VALUES (%s, %s, %s);",(uid, username, 0))
+                conn.commit()                                                                        
+                cur.execute("SELECT id, username, step FROM users WHERE id=%s;" % uid)
+                user = cur.fetchone()    
+            replyToUser(each, user, conn)
 
 
-def replyToUser(data, uid):
-    step = users[uid]    
+def replyToUser(data, user, conn):
+    cur = conn.cursor()
+    step = user[2]    
     name = data["message"]["from"]["first_name"]
     try:
         last_name = data["message"]["from"]["last_name"]
@@ -37,19 +41,27 @@ def replyToUser(data, uid):
 
 
     # Check if the update is already replied to, if it is, don't send a message
-    if data["update_id"] in already_replied:
-        pass    
+    cur.execute('SELECT "updateId", "userId" FROM replies WHERE "updateId"=%s;' % user[0])
+    replied = cur.fetchone()
+    if replied is not None:
+        print ("nothing to do here")        
     else:
-    # Checking user steps
         if step == 0:
             message = "Hi %s, let's get you into the anonymous social network, let's start by knowing your company email address %s" % (name, step)
         if step == 1:
             message = "Cool. I have sent you a secret password to your email address, please check and let me know the secret password for me to allow you in. %s" % step
         if step == 2:  
-            message = "We have got your email address, and we will be adding you your company's anonymous channel. You will receive a confirmation shortly %s" % step
+            message = "We have got your email address, and we will be adding you your company's anonymous channel. You will receive a confirmation shortly %s" % step            
 
-        try:
-            already_replied.append(data["update_id"])
+        step = step + 1
+        cur.execute('UPDATE users SET step=%s WHERE id=%s;', (step, user[0]))
+        conn.commit()
+        cur.execute('INSERT INTO replies("updateId", "userId") VALUES (%s, %s);', (data["update_id"], user[0]))
+        conn.commit()
+
+        print ("still message has to be sent")
+
+        try:            
             data = {
                 "chat_id": data["message"]["chat"]["id"],
                 "text": message 
@@ -58,9 +70,15 @@ def replyToUser(data, uid):
         except Exception as e:
             print ("Could not send message")
             print (str(e))
-        else:
-            users[uid] += 1
+        else:            
             print ("replies sent")
 
 
-main()        
+try:    
+    conn = psycopg2.connect(host="localhost", database="anonymous_network", user="anonymous_network", password="dillirox@123")
+except Exception as e:
+    print ("could not connect to db")
+    print (e)
+else:
+    print ("db connection established")
+    main(conn)
