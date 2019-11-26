@@ -1,7 +1,7 @@
 import requests
 import psycopg2
 
-base_url = "https://api.telegram.org/bot808378125:AAEJxb5qJdSugysaGzxxHRsEQLDho-lcbcs/"
+base_url = "https://api.telegram.org/957095282:AAEzEqfTEhCk4LiHUyReCbppeOmsTDAGXXY/"
 users = {}
 already_replied = []
 approved_emails = ["infosys.com", "tcs.com", "mauna.ai"]
@@ -9,7 +9,7 @@ approved_emails = ["infosys.com", "tcs.com", "mauna.ai"]
 def main(conn):    
     cur = conn.cursor()    
     try:
-        updates = requests.get("https://api.telegram.org/bot808378125:AAEJxb5qJdSugysaGzxxHRsEQLDho-lcbcs/getUpdates")
+        updates = requests.get("https://api.telegram.org/957095282:AAEzEqfTEhCk4LiHUyReCbppeOmsTDAGXXY/getUpdates")
     except:
         print ("could not connect to telegram")
     else:
